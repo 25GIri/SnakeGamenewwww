@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <style>
+        body {
+            background-color: #111;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            font-size: 2rem;
+            letter-spacing: 2px;
+            color: #00ffcc;
+            text-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+        }
+
+        #score-board {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        canvas {
+            border: 4px solid #00ffcc;
+            background-color: #000;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+            border-radius: 4px;
+        }
+
+        #instructions {
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #aaa;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>SNAKE GAME</h1>
+    <div id="score-board">Score: <span id="score">0</span></div>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <div id="instructions">Use Arrow Keys or WASD to Play. Press Space to Restart when Game Over.</div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreElement = document.getElementById("score");
+
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
+
+        let snake = [];
+        let food = { x: 0, y: 0 };
+        let dx = gridSize;
+        let dy = 0;
+        let score = 0;
+        let gameInterval = null;
+        let isGameOver = false;
+        let changingDirection = false;
+
+        function resetGame() {
+            snake = [
+                { x: 160, y: 200 },
+                { x: 140, y: 200 },
+                { x: 120, y: 200 }
+            ];
+            score = 0;
+            scoreElement.innerText = score;
+            dx = gridSize;
+            dy = 0;
+            isGameOver = false;
+            createFood();
+            if (gameInterval) clearInterval(gameInterval);
+            gameInterval = setInterval(gameLoop, 100);
+        }
+
+        function gameLoop() {
+            changingDirection = false;
+            if (hasGameEnded()) {
+                isGameOver = true;
+                clearInterval(gameInterval);
+                drawGameOver();
+                return;
+            }
+
+            clearCanvas();
+            drawFood();
+            moveSnake();
+            drawSnake();
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function drawSnake() {
+            snake.forEach((part, index) => {
+                ctx.fillStyle = index === 0 ? "#00ffcc" : "#009977";
+                ctx.strokeStyle = "#000";
+                ctx.fillRect(part.x, part.y, gridSize, gridSize);
+                ctx.strokeRect(part.x, part.y, gridSize, gridSize);
+            });
+        }
+
+        function moveSnake() {
+            const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+            snake.unshift(head);
+
+            const hasEatenFood = snake[0].x === food.x && snake[0].y === food.y;
+            if (hasEatenFood) {
+                score += 10;
+                scoreElement.innerText = score;
+                createFood();
+            } else {
+                snake.pop();
+            }
+        }
+
+        function randomInt(min, max) {
+            return Math.floor((Math.random() * (max - min) + min) / gridSize) * gridSize;
+        }
+
+        function createFood() {
+            food.x = randomInt(0, canvas.width);
+            food.y = randomInt(0, canvas.height);
+
+            snake.forEach(part => {
+                const hasColided = part.x === food.x && part.y === food.y;
+                if (hasColided) createFood();
+            });
+        }
+
+        function drawFood() {
+            ctx.fillStyle = "#ff3366";
+            ctx.strokeStyle = "#000";
+            ctx.fillRect(food.x, food.y, gridSize, gridSize);
+            ctx.strokeRect(food.x, food.y, gridSize, gridSize);
+        }
+
+        function hasGameEnded() {
+            for (let i = 4; i < snake.length; i++) {
+                if (snake[i].x === snake[0].x && snake[i].y === snake[0].y) return true;
+            }
+
+            const hitLeftWall = snake[0].x < 0;
+            const hitRightWall = snake[0].x >= canvas.width;
+            const hitToptWall = snake[0].y < 0;
+            const hitBottomWall = snake[0].y >= canvas.height;
+
+            return hitLeftWall || hitRightWall || hitToptWall || hitBottomWall;
+        }
+
+        function drawGameOver() {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "#ff3366";
+            ctx.font = "bold 30px 'Segoe UI', sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 10);
+
+            ctx.fillStyle = "#fff";
+            ctx.font = "16px 'Segoe UI', sans-serif";
+            ctx.fillText("Press SPACE to Restart", canvas.width / 2, canvas.height / 2 + 30);
+        }
+
+        function changeDirection(event) {
+            const keyPressed = event.keyCode;
+            const LEFT_KEY = 37;
+            const UP_KEY = 38;
+            const RIGHT_KEY = 39;
+            const DOWN_KEY = 40;
+            const SPACE_KEY = 32;
+
+            const keyPressedChar = event.key;
+
+            if (changingDirection) return;
+
+            if ((keyPressed === LEFT_KEY || keyPressedChar === 'a' || keyPressedChar === 'A') && dx === 0) {
+                dx = -gridSize;
+                dy = 0;
+                changingDirection = true;
+            }
+            if ((keyPressed === UP_KEY || keyPressedChar === 'w' || keyPressedChar === 'W') && dy === 0) {
+                dx = 0;
+                dy = -gridSize;
+                changingDirection = true;
+            }
+            if ((keyPressed === RIGHT_KEY || keyPressedChar === 'd' || keyPressedChar === 'D') && dx === 0) {
+                dx = gridSize;
+                dy = 0;
+                changingDirection = true;
+            }
+            if ((keyPressed === DOWN_KEY || keyPressedChar === 's' || keyPressedChar === 'S') && dy === 0) {
+                dx = 0;
+                dy = gridSize;
+                changingDirection = true;
+            }
+
+            if (keyPressed === SPACE_KEY && isGameOver) {
+                resetGame();
+            }
+        }
+
+        document.addEventListener("keydown", changeDirection);
+
+        // Start the game on load
+        resetGame();
+    </script>
+</body>
+</html>
